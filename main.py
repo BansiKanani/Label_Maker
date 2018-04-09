@@ -7,28 +7,39 @@ import random
 
 def xls_to_list(xlsfile):
 
-    dataList = []
-    workBook = xlrd.open_workbook(file_location)
+    dataList = [] #list = [lbl_NO, Type, Length, Width]
+    workBook = xlrd.open_workbook(xlsfile)
     sheet = workBook.sheet_by_index(0)
-    for row in range(1, sheet.nrows):
-        dataList.append([int(sheet.cell_value(row, 1)), sheet.cell_value(row, 3)])
+    for row in range(2, sheet.nrows):
+        dataList.append([sheet.cell_value(row, 9), (sheet.cell_value(row, 8)).upper(), sheet.cell_value(row, 10), sheet.cell_value(row, 11)])
+        dataList.append([sheet.cell_value(row, 12), (sheet.cell_value(row, 8)).upper(), sheet.cell_value(row, 13), sheet.cell_value(row, 14)])
 
     return dataList
 
 def make_label(lblDataList):
 
     allImages = []
-    fontNumber = ImageFont.truetype("font/Consolas.ttf", 100)
-    fontText = ImageFont.truetype("font/Consolas.ttf", 150)
+    fontNumber = ImageFont.truetype("font/Consolas.ttf", 80)
+    fontText = ImageFont.truetype("font/Consolas.ttf", 50)
 
     for lbl in lblDataList:
 
-        if lbl[1] in ('T','t'): img = Image.open("source/t.png")
-        elif lbl[1] in ('F','f'): img = Image.open("source/f.png")
+        if type(lbl[0]) == float: lblTemp = str(int(lbl[0]))
+        else: lblTemp = str(lbl[0])
 
+        if lbl[1] == 'T': img = Image.open("source/t.png")
+        elif lbl[1] =='F': img = Image.open("source/f.png")
         draw = ImageDraw.Draw(img)
-        draw.text((260, 170), str(lbl[0]), (0,0,0), font=fontNumber)
-        draw.text((400, 150), '-'+lbl[1].upper(), (0,0,0), font=fontText)
+
+        draw.text((260, 140), lblTemp+'-('+lbl[1].upper()+')', (0,0,0), font=fontNumber)
+        draw.text((260, 260), str(int(lbl[2]))+' X '+str(int(lbl[3])), (0,0,0), font=fontText)
+
+        #print(lblTemp+'-('+lbl[1].upper()+')')
+        #print(str(lbl[2])+'x'+str(lbl[3]))
+
+
+
+        #draw.text((400, 150), '-'+lbl[1].upper(), (0,0,0), font=fontText)
         #img.save('temp/{0}-{1}.jpg'.format(i[0], i[1]))
         allImages.append(img)
 
@@ -60,7 +71,7 @@ def merge_images(allImages):
 
 
 #lblType = ['t', 'f']
-#lblRange = range(1, random.randint(1, 24))
+#lblRange = range(1, random.randint(1, 500))
 #rand_items = []
 #for i in lblRange: rand_items.append([i, lblType[random.randint(0,1)]])
 
