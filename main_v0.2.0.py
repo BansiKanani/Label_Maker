@@ -1,0 +1,165 @@
+import os
+from PIL import Image
+from PIL import ImageFont
+from PIL import ImageDraw
+import xlrd
+import time
+from PyPDF2 import PdfFileMerger, PdfFileReader
+
+def xls_to_list():
+    print(' 1) Excel File reading!')
+    file_list = os.listdir(os.getcwd())
+    xlsfile = ([f for f in file_list if 'xlsx' in f])[0]
+    all_data_list, current_row = [], []
+    workBook = xlrd.open_workbook(xlsfile)
+    sheet = workBook.sheet_by_index(0)
+    for row in range(2, sheet.nrows):
+        for col in range(0, sheet.ncols):
+            current_row.append(sheet.cell_value(row, col))
+        all_data_list.append(current_row)
+        current_row = []
+    print('--> Done!')
+    return all_data_list
+
+def make_label(lblDataList, fontFile, t_file, f_file, s_file):
+
+    print (' 2) Making Labels.....')
+    allImages = []
+
+    # Names of columns and it's index in xlsx file.
+    quantity_vr_hr = 4
+    remark_vr_hr = 8
+    vr_ply_lbl = 9
+    vr_ply_length = 10
+    vr_ply_width = 11
+
+    #hr_ply_remark =
+    hr_ply_lbl = 12
+    hr_ply_length = 13
+    hr_ply_width = 14
+
+    edgeband_top = 15
+    edgeband_left = 16
+    edgeband_bottom = 17
+    edgeband_righ = 18
+
+    boring_point = 22
+    self_lbl = 24
+    self_length = 25
+    self_width = 26
+    self_quantity = 27
+
+    for lbl in lblDataList:
+        # IF you found any VR PLY label then.
+
+        template_file = ''
+        if lbl[vr_ply_lbl] is not '':
+            if lbl[remark_vr_hr] == 'T': template_file = t_file
+            else: template_file = f_file
+
+            for i in range(0, int(lbl[quantity_vr_hr])):
+                allImages.append(print_label(int(lbl[vr_ply_lbl]), lbl[remark_vr_hr], template_file, int(lbl[vr_ply_length]),
+                                             int(lbl[vr_ply_width]), lbl[edgeband_top], lbl[edgeband_left], lbl[edgeband_bottom],
+                                             lbl[edgeband_righ], lbl[boring_point], fontFile))
+
+        if lbl[hr_ply_lbl] is not '':
+            if lbl[remark_vr_hr] == 'T': template_file = f_file
+            else: template_file = t_file
+
+            for i in range(0, int(lbl[quantity_vr_hr])):
+                allImages.append(print_label(lbl[hr_ply_lbl], lbl[remark_vr_hr], template_file, int(lbl[hr_ply_length]),
+                                             int(lbl[hr_ply_width]), lbl[edgeband_top], lbl[edgeband_left],
+                                             lbl[edgeband_bottom],
+                                             lbl[edgeband_righ], lbl[boring_point], fontFile))
+
+    for lbl in lblDataList:
+        if lbl[self_lbl] is not '':
+            template_file = s_file
+            for i in range(0, int(lbl[self_quantity])):
+                allImages.append(print_label(lbl[self_lbl], '', template_file, int(lbl[self_length]),
+                                             int(lbl[self_width]), '', '', '', '', '', fontFile))
+
+
+    print('--> Done!')
+    return allImages
+
+def print_label(name, remark , templateFile, length, width, top, left, bottom, right, boringPoint, fontFile):
+
+    fontBig = ImageFont.truetype(fontFile, 80)
+    fontMedium = ImageFont.truetype(fontFile, 45)
+    fontSmall = ImageFont.truetype(fontFile, 40)
+
+    img = Image.open(templateFile)
+    draw = ImageDraw.Draw(img)
+
+    # Print label data on images
+    draw.text((350, 150), str(name), (0, 0, 0), font=fontBig)  # Label number
+    #draw.text((590, 110), '(' + remark + ')', (0, 0, 0), font=fontMedium)  # Type
+    draw.text((590, 110), remark, (0, 0, 0), font=fontMedium)  # Type
+
+    draw.text((290, 280), str(length) + ' X ' + str(width), (0, 0, 0), font=fontMedium)  # size
+
+    draw.text((380, 25), str(top), (0, 0, 0), font=fontSmall)  # top
+    draw.text((35, 195), str(left), (0, 0, 0), font=fontSmall)  # left
+    draw.text((145, 195), str(boringPoint), (0, 0, 0), font=fontSmall)  # boring point
+    draw.text((380, 365), str(bottom), (0, 0, 0), font=fontSmall)  # bottom
+    draw.text((735, 190), str(right), (0, 0, 0), font=fontSmall)  # right
+    return img
+
+def merge_images(allImages):
+
+    print(' 3) Making PDF.....')
+    (width, height) = allImages[0].size
+    #total counter counts all iteration / inPageCounter count images in each page / pages stores number
+    totalCounter, inPageCounter, pages = 0, 0, 1
+
+    #Do for all images
+    while totalCounter < len(allImages):
+        #Create while image to print labels in it.
+        mixedImg = Image.new('RGB', (3 * width, 8 * height), (255,255,255))
+        #Check if page is full then reset inImgCounter.
+        while inPageCounter < 24:
+            for row in range(8):
+                for col in range(3):
+                    if totalCounter < len(allImages):
+                        mixedImg.paste(im=allImages[totalCounter], box=(col*width, row*height))
+                    totalCounter += 1
+                    inPageCounter += 1
+
+        mixedImg.save('Label-{}.pdf'.format(pages), 'PDF', resolution=100.0)
+        pages += 1
+        inPageCounter = 0
+        #Delete old image from memory.
+        mixedImg.close()
+    print('--> Done!')
+
+def merge_pdfs():
+
+    print(' 4) Merging PDF pages...')
+    file_list = os.listdir(os.getcwd())
+    pdf_list = ([f for f in file_list if 'pdf' and '-' in f])
+
+    merger = PdfFileMerger()
+    for f in pdf_list:
+        with open(f, "rb") as fl:
+            merger.append((PdfFileReader(fl)))
+        os.remove(f)
+
+    merger.write("Labels_Print_This_File.pdf")
+    print('--> Done!')
+
+
+
+
+
+font_file = r'source/arial.ttf'
+t_image = r'source/t.png'
+f_image = r'source/f.png'
+s_image = r'source/s.png'
+
+all_Data_List = xls_to_list() #return LIST containing xls Data
+allImages = make_label(all_Data_List, font_file, t_image, f_image, s_image) #return LIST containing Image Objects
+merge_images(allImages)
+merge_pdfs()
+print('\n\n >> Message : You can find the labels PDF file in the same folder! \n >> Message : You can now close this window!')
+time.sleep(15)
