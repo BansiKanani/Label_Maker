@@ -1,0 +1,9 @@
+First install these libs.
+
+sudo apt install python3
+pip install xlrd
+sudo apt install python-pip
+pip install Pillow
+// if error installing PyPDF2 then first install setuptools
+pip install -U setuptools
+pip install PyPDF2
